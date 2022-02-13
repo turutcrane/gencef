@@ -5,12 +5,17 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"embed"
 	_ "embed"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"go/format"
+	"io"
+	"io/fs"
 	"io/ioutil"
+	"path"
 
 	"os"
 	"path/filepath"
@@ -25,17 +30,23 @@ import (
 var (
 	goFormat     bool = true
 	fileComments map[int][]string
-	capiDir      = flag.String("capidir", "capi", "outpu directory")
-	traceOn      = flag.Bool("trace", false, "trace flag")
-	logTags      LogTag
+	// capiDir      = flag.String("capidir", "capi", "outpu directory")
+	pkgDir  = flag.String("pkgdir", ".", "output directory")
+	pkgName = flag.String("pkg", "github.com/turutcrane/cefingo", "package name")
+	traceOn = flag.Bool("trace", false, "trace flag")
+	logTags LogTag
 )
+
+//go:embed embed/*
+var embd embed.FS
 
 func main() {
 	flag.Parse()
 	log.Trace(*traceOn)
 	tus := parser.Parse()
-	logTagFile := filepath.Join(*capiDir, "logtag.txt")
-	logTags.ReadTags(logTagFile)
+	createPkgDir("capi")
+	logTagFile := logTags.ReadTags(*pkgDir)
+
 	defer logTags.WriteToFile(logTagFile)
 	// log.Println("T37:", logTags)
 
@@ -166,7 +177,7 @@ func outFileGo(gf *Generator) {
 	}
 
 	// Write to file.
-	outputName := filepath.Join(*capiDir, gf.fname)
+	outputName := filepath.Join(*pkgDir+"/capi", gf.fname)
 
 	err := ioutil.WriteFile(outputName, src, 0644)
 	if err != nil {
@@ -192,7 +203,7 @@ func newFileCH() (cFile, hFile *Generator) {
 func outFileCH(cFile, hFile *Generator) {
 
 	// Write to C file.
-	outputCName := filepath.Join(*capiDir, "cefingo_gen.c")
+	outputCName := filepath.Join(*pkgDir+"/capi", "cefingo_gen.c")
 	err := ioutil.WriteFile(outputCName, cFile.buf.Bytes(), 0644)
 	if err != nil {
 		log.Panicf("writing output: %s", err)
@@ -200,7 +211,7 @@ func outFileCH(cFile, hFile *Generator) {
 
 	// Write to H file.
 	hFile.Printf("#endif //CEFINGO_GEN_H_")
-	outputHName := filepath.Join(*capiDir, "cefingo_gen.h")
+	outputHName := filepath.Join(*pkgDir+"/capi", "cefingo_gen.h")
 	err = ioutil.WriteFile(outputHName, hFile.buf.Bytes(), 0644)
 	if err != nil {
 		log.Panicf("writing output: %s", err)
@@ -450,21 +461,32 @@ func (lt *LogTag) ResetTag(key string) {
 	lt.subTag = 0
 }
 
-//go:embed logtag.txt
-var logtag []byte
-
 // ReadTags reads tag number from file
-func (lt *LogTag) ReadTags(fname string) {
+func (lt *LogTag) ReadTags(pkgDir string) string {
+	tagFile := "logtag.txt"
+	fname := filepath.Join(pkgDir, "capi", tagFile)
 	lt.TagMap = map[string]int{}
 	lt.MaxTag = 100
 	var buf []byte
 	var err error
-	if buf, err = ioutil.ReadFile(fname); err != nil {
-		buf = logtag
+	var f fs.File
+	if file, err := os.Open(fname); err == nil {
+		f = fs.File(file)
+	} else if errors.Is(err, fs.ErrNotExist) {
+		if f, err = embd.Open(path.Join("embed", tagFile)); err != nil {
+			log.Panicln("T476: can not open embd:", tagFile)
+		}
+	} else {
+		log.Panicln("T474: can not open ", fname, err)
+	}
+
+	if buf, err = io.ReadAll(f); err != nil {
+		log.Panicln("T480: can not read logtag")
 	}
 	if err := json.Unmarshal(buf, lt); err != nil {
 		log.Panicln("T465:", err)
 	}
+	return fname
 }
 
 // WriteWriteToFile writes tag number to file
@@ -476,5 +498,16 @@ func (lt *LogTag) WriteToFile(fname string) {
 	err = ioutil.WriteFile(fname, b, 0644)
 	if err != nil {
 		log.Panicln("T475:", err)
+	}
+}
+
+func createPkgDir(dirname string) {
+	dirpath := filepath.Join(*pkgDir, dirname)
+
+	if d, err := os.Stat(dirpath); err == nil && d.IsDir() {
+		return
+	}
+	if err := os.Mkdir(dirpath, 0777); err != nil {
+		log.Panicln("T508: can not create", dirpath)
 	}
 }

@@ -1,5 +1,5 @@
 # cefingo
-This is experimental go binding for CEF.
+This is experimental go binding generator for CEF.
 
 ## Supported Environment
 * Windows 10 64bit (msys2 environment is recomended)
