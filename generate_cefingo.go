@@ -44,7 +44,10 @@ func main() {
 	flag.Parse()
 	log.Trace(*traceOn)
 	tus := parser.Parse()
-	createPkgDir("capi")
+	copyPkgDir("capi")
+	copyPkgDir("cef")
+	copyPkgDir("v8api")
+	copyPkgDir("message_router")
 	logTagFile := logTags.ReadTags(*pkgDir)
 
 	defer logTags.WriteToFile(logTagFile)
@@ -507,7 +510,41 @@ func createPkgDir(dirname string) {
 	if d, err := os.Stat(dirpath); err == nil && d.IsDir() {
 		return
 	}
-	if err := os.Mkdir(dirpath, 0777); err != nil {
+	if err := os.Mkdir(dirpath, fs.ModePerm); err != nil {
 		log.Panicln("T508: can not create", dirpath)
+	}
+}
+
+func copyPkgDir(dirname string) {
+	createPkgDir(dirname)
+	// if ls, err := fs.Glob(embd, path.Join("embed", dirname, "*")); err == nil {
+	// 	for i, l := range ls {
+	// 		fmt.Println("T519:", i, l)
+	// 	}
+	// } else {
+	// 	log.Panicln("T520:", err)
+	// }
+	if err := fs.WalkDir(embd, path.Join("embed", dirname), func (path string, d fs.DirEntry, err error) error {
+		if d.IsDir() {
+			dirPath := strings.TrimPrefix(path, "embed/")
+			createPkgDir(dirPath)
+		} else {
+			copyPkgFile(path)
+		}
+		return nil
+	}); err != nil {
+		log.Panicln("T527:", err)
+	}
+}
+
+func copyPkgFile(path string) {
+	if b, err := fs.ReadFile(embd, path); err == nil {
+		fname := filepath.Join(*pkgDir, strings.TrimPrefix(path, "embed/"))
+		if err := os.WriteFile(fname, b, fs.ModePerm); err != nil {
+			log.Panicln("T541:", fname, err,)
+		}
+
+	} else {
+		log.Panicln("T541:", err)
 	}
 }
