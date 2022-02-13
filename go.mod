@@ -1,4 +1,4 @@
-module github.com/turutcrane/cefingo
+module github.com/turutcrane/gencef
 
 go 1.16
 

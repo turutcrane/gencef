@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	strcase "github.com/stoewer/go-strcase"
-	"github.com/turutcrane/cefingo/tools/gen-cefingo/internal/log"
+	"github.com/turutcrane/gencef/internal/log"
 	"modernc.org/xc"
 )
 

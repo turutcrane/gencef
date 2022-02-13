@@ -8,8 +8,8 @@ package main
 import (
 	"strings"
 
-	"github.com/turutcrane/cefingo/tools/gen-cefingo/internal/log"
-	"github.com/turutcrane/cefingo/tools/gen-cefingo/parser"
+	"github.com/turutcrane/gencef/internal/log"
+	"github.com/turutcrane/gencef/parser"
 )
 
 // Generate parameter name for Go func.

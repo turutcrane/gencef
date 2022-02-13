@@ -13,7 +13,7 @@ import (
 
 	"modernc.org/cc"
 
-	"github.com/turutcrane/cefingo/tools/gen-cefingo/internal/log"
+	"github.com/turutcrane/gencef/internal/log"
 )
 
 type void struct{}
