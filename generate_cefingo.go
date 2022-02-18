@@ -32,7 +32,7 @@ var (
 	fileComments map[int][]string
 	// capiDir      = flag.String("capidir", "capi", "outpu directory")
 	pkgDir  = flag.String("pkgdir", ".", "output directory")
-	pkgName = flag.String("pkg", "github.com/turutcrane/cefingo", "package name")
+	// pkgName = flag.String("pkg", "github.com/turutcrane/cefingo", "package name")
 	traceOn = flag.Bool("trace", false, "trace flag")
 	logTags LogTag
 )
