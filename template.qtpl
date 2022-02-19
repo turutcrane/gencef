@@ -2,8 +2,8 @@
 {% import (
 	"strings"
 
-	"github.com/turutcrane/gencef/parser"
-	"github.com/turutcrane/gencef/internal/log"
+	"github.com/turutcrane/gencefingo/parser"
+	"github.com/turutcrane/gencefingo/internal/log"
 )%}
 
 Generate parameter name for Go func.

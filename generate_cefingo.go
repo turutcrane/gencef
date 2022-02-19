@@ -23,8 +23,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/turutcrane/gencef/internal/log"
-	"github.com/turutcrane/gencef/parser"
+	"github.com/turutcrane/gencefingo/internal/log"
+	"github.com/turutcrane/gencefingo/parser"
 )
 
 var (
