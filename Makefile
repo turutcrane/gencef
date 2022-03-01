@@ -12,7 +12,7 @@ vet: template.qtpl.go *.go parser/parse_string.go
 	go vet .
 
 capi:
-	go generate github.com/turutcrane/cefingo/capi
+	go run . -pkgdir ../cefingo
 
 .PHONY: fmt
 fmt:
