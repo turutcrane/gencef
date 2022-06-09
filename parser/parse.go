@@ -262,14 +262,13 @@ var sliceParameter = map[string]string{
 	"::cef_display_get_alls::displays":                                  "displaysCount",
 }
 
-
 var sliceLengthParameter = map[string]string{}
 
 var sliceSizeExp = map[string]string{
-	"cef_post_data_t::get_elements::elements": "self.GetElementCount()",
-	"cef_x509certificate_t::get_derencoded_issuer_chain::chain":         "self.GetIssuerChainSize()",
-	"cef_x509certificate_t::get_pemencoded_issuer_chain::chain":         "self.GetIssuerChainSize()",
-	"::cef_display_get_alls::displays":                                  "DisplayGetCount()",
+	"cef_post_data_t::get_elements::elements":                   "self.GetElementCount()",
+	"cef_x509certificate_t::get_derencoded_issuer_chain::chain": "self.GetIssuerChainSize()",
+	"cef_x509certificate_t::get_pemencoded_issuer_chain::chain": "self.GetIssuerChainSize()",
+	"::cef_display_get_alls::displays":                          "DisplayGetCount()",
 }
 
 func init() {
@@ -1061,7 +1060,11 @@ func handleFunc(base DeclCommon) (decl Decl) {
 	switch dd.Case {
 	case 6: // DirectDeclarator '(' ParameterTypeList ')'
 		for p := dd.ParameterTypeList.ParameterList; p != nil; p = p.ParameterList {
-			f.params = append(f.params, getParam(p.ParameterDeclaration, f))
+			if param, ok := getParam(p.ParameterDeclaration, f); ok {
+				f.params = append(f.params, param)
+			} else {
+				log.Tracef("T1066: no param %v\n", p)
+			}
 		}
 		if dd.ParameterTypeList.Case == 1 { //ParameterList ',' "..."  // Case 1
 			variadic := Param{nil, true, noToken, nil}
@@ -1669,7 +1672,11 @@ func getFuncPointer(sdecl *CefClassDecl, sd cc.StructDeclaration) (methodP *Meth
 			return &MethodDecl{noToken, nil, sd, nil, sdecl}
 		}
 		for p := dd.ParameterTypeList.ParameterList; p != nil; p = p.ParameterList {
-			m.params = append(m.params, getParam(p.ParameterDeclaration, m))
+			if param, ok := getParam(p.ParameterDeclaration, m); ok {
+				m.params = append(m.params, param)
+			} else {
+				log.Tracef("T1678: no param %v\n", p)
+			}
 		}
 		if dd.ParameterTypeList.Case == 1 { //ParameterList ',' "..."  // Case 1
 			variadic := Param{nil, true, noToken, nil}
@@ -1745,15 +1752,25 @@ func (p Param) Type() (ty Type) {
 	return ty
 }
 
-func getParam(p *cc.ParameterDeclaration, f Callee) (param Param) {
+func getParam(p *cc.ParameterDeclaration, f Callee) (param Param, ok bool) {
 	switch p.Case {
 	case 0:
 		paramNameToken := getDirectDeclaratorToken(p.Declarator.DirectDeclarator)
 		param = Param{f, false, paramNameToken, p}
+	case 1:
+		sp := p.DeclarationSpecifiers
+		switch sp.Case {
+		case 1:
+			ty := getTsType(sp.TypeSpecifier)
+			if ty.Ty == TyVoid {
+				return param, false
+			}
+		}
+		log.Panicf("T1760: %v, %v\n", p, f)
 	default:
 		log.Panicf("T1209: %v, %v\n", p, f)
 	}
-	return param
+	return param, true
 }
 
 func (mp *MethodDecl) CalleeName() string {
