@@ -482,6 +482,8 @@ var structDefNames = map[string]void{
 	"cef_composition_underline_t":    setElement,
 	"cef_audio_parameters_t":         setElement,
 	"cef_media_sink_device_info_t":   setElement,
+	"cef_basetime_t":               setElement,
+	"cef_touch_handle_state_t": setElement,
 }
 
 var simpleDefNames = map[string]void{
@@ -664,7 +666,7 @@ func (m MethodDecl) Params() []Param {
 }
 
 func (m MethodDecl) FirstLine() (line int) {
-	ts := getTypeSpecifier(m.sd)
+	_, ts := getTypeSpecifier(m.sd)
 	switch ts.Case {
 	case 0, 3, 5, 6, 13: // void, int, float, double, TYPEDEFNAME
 		line = ts.Token.Position().Line
@@ -830,11 +832,13 @@ func Parse() []*cc.TranslationUnit {
 	return tus
 }
 
-//	ExternalDeclaration:
-//	        FunctionDefinition
-//	|       Declaration                  // Case 1
-//	|       BasicAssemblerStatement ';'  // Case 2
-//	|       ';'                          // Case 3
+// ExternalDeclaration:
+//
+//	FunctionDefinition
+//
+// |       Declaration                  // Case 1
+// |       BasicAssemblerStatement ';'  // Case 2
+// |       ';'                          // Case 3
 func ExternalDeclaration(i int, ed *cc.ExternalDeclaration) {
 	switch ed.Case {
 	case 0: // FunctionDefinition
@@ -853,9 +857,11 @@ func ExternalDeclaration(i int, ed *cc.ExternalDeclaration) {
 	}
 }
 
-//	Declaration:
-//	        DeclarationSpecifiers InitDeclaratorListOpt ';'
-//	|       StaticAssertDeclaration                          // Case 1
+// Declaration:
+//
+//	DeclarationSpecifiers InitDeclaratorListOpt ';'
+//
+// |       StaticAssertDeclaration                          // Case 1
 func processDeclaration(d *cc.Declaration) {
 	switch d.Case {
 	case 0:
@@ -977,10 +983,12 @@ func getKind(d *cc.Declaration) (ik IdentKind) {
 	return ik
 }
 
-//	StructOrUnionSpecifier:
-//	        StructOrUnion IdentifierOpt '{' StructDeclarationList '}'
-//	|       StructOrUnion IDENTIFIER                                   // Case 1
-//	|       StructOrUnion IdentifierOpt '{' '}'                        // Case 2
+// StructOrUnionSpecifier:
+//
+//	StructOrUnion IdentifierOpt '{' StructDeclarationList '}'
+//
+// |       StructOrUnion IDENTIFIER                                   // Case 1
+// |       StructOrUnion IdentifierOpt '{' '}'                        // Case 2
 func getStructTag(su *cc.StructOrUnionSpecifier) Token {
 	switch su.Case {
 	case 1:
@@ -1220,8 +1228,9 @@ func handleStruct(base DeclCommon, st *cc.StructOrUnionSpecifier) (decl Decl) {
 		decl = stDecl
 		stDecl.Common().Dk = DkStruct
 		for _, m := range sm {
-			ts := getTypeSpecifier(m)
+			c, ts := getTypeSpecifier(m)
 			ty := getTsType(ts)
+			ty.Const = c
 			d := getDeclarator(m)
 			if d.PointerOpt != nil {
 				ty.Pointer++
@@ -1260,8 +1269,9 @@ func handleStruct(base DeclCommon, st *cc.StructOrUnionSpecifier) (decl Decl) {
 				fp := getFuncPointer(sdecl, m0)
 				if fp.Funcname != noToken {
 					log.Tracef("T647: Fn: %s", fp.Funcname.Name())
-					ts := getTypeSpecifier(m0)
+					c, ts := getTypeSpecifier(m0)
 					ty := getTsType(ts)
+					ty.Const = c
 					log.Tracef("T372:   Case %d, %s %t", ts.Case, ty.Token.Name(), ty.Typedef)
 					for i, p := range fp.params {
 						log.Tracef("T378:   p%d, %s", i, p)
@@ -1277,7 +1287,7 @@ func handleStruct(base DeclCommon, st *cc.StructOrUnionSpecifier) (decl Decl) {
 				decl = &SimpleDecl{*sdecl.Common()}
 				decl.Common().Dk = DkSimple
 			} else {
-				log.Panicf("T1163: Can not Handle, %v", sdecl.d)
+				log.Panicf("T1163: Can not Handle, %s, %v", name, sdecl.d)
 			}
 		default:
 			decl = sdecl
@@ -1291,12 +1301,30 @@ func handleStruct(base DeclCommon, st *cc.StructOrUnionSpecifier) (decl Decl) {
 
 }
 
-func getTypeSpecifier(sd cc.StructDeclaration) *cc.TypeSpecifier {
+// SpecifierQualifierList represents data reduced by productions:
+//
+//	SpecifierQualifierList:
+//	        TypeSpecifier SpecifierQualifierListOpt
+//	|       TypeQualifier SpecifierQualifierListOpt  // Case 1
+func getTypeSpecifier(sd cc.StructDeclaration) (bool, *cc.TypeSpecifier) {
 	sq := sd.SpecifierQualifierList
-	if sq.Case != 0 {
+	var ts *cc.TypeSpecifier
+	var c bool
+	switch sq.Case {
+	case 0:
+		ts = sq.TypeSpecifier
+	case 1:
+		tq := Token(sq.TypeQualifier.Token).Name()
+		if tq == "const" {
+			ts = sq.SpecifierQualifierListOpt.SpecifierQualifierList.TypeSpecifier
+			c = true
+		} else {
+			log.Panicf("T1310: SpecifierQualifierList.Case != 0, %v\n", sd)
+		}
+	default:
 		log.Panicf("T415: SpecifierQualifierList.Case != 0, %v\n", sd)
 	}
-	return sq.TypeSpecifier
+	return c, ts
 }
 
 func getTsType(ts *cc.TypeSpecifier) (ty Type) {
@@ -1402,7 +1430,7 @@ func tagToTypdefName(tag string) (name string) {
 }
 
 func checkBase(sd cc.StructDeclaration) (stType StructType, stBase string) {
-	tq := getTypeSpecifier(sd)
+	_, tq := getTypeSpecifier(sd)
 	t := Token(tq.Token)
 	name := t.Name()
 	if tq.Case != 13 { // TYPEDEFNAME
@@ -1782,9 +1810,10 @@ func (mp *MethodDecl) ClassBaseName() string {
 }
 
 func (m MethodDecl) ReturnType() (retType Type) {
-	ts := getTypeSpecifier(m.sd)
+	c, ts := getTypeSpecifier(m.sd)
 	// log.Tracef("T811: %s\n", getDeclarator(m.sd).Type)
 	retType = getTsType(ts)
+	retType.Const = c
 
 	if m.sd.Case == 0 {
 		pointer := m.sd.StructDeclaratorList.StructDeclarator.Declarator.PointerOpt
