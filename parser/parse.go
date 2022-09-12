@@ -482,13 +482,13 @@ var structDefNames = map[string]void{
 	"cef_composition_underline_t":    setElement,
 	"cef_audio_parameters_t":         setElement,
 	"cef_media_sink_device_info_t":   setElement,
-	"cef_basetime_t":               setElement,
-	"cef_touch_handle_state_t": setElement,
+	"cef_basetime_t":                 setElement,
+	"cef_touch_handle_state_t":       setElement,
+	"cef_time_t":                     setElement,
 }
 
 var simpleDefNames = map[string]void{
 	"cef_color_t":                  setElement,
-	"cef_time_t":                   setElement,
 	"cef_string_list_t":            setElement,
 	"cef_string_map_t":             setElement,
 	"cef_string_multimap_t":        setElement,
