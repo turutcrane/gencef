@@ -108,7 +108,9 @@ Set returned Go value to C.param and cleanup
 		if cefp != {%= goTempNameOut(p) %}.pc_{%s p.Type().BaseName() %} {
 			if {%= goTempNameOut(p) %}.beUnrefed != byCef {
 				BaseAddRef({%= goTempNameOut(p) %}.pc_{%s p.Type().BaseName() %}) // InOut Param
+				BaseAddRef({%= goTempNameOut(p) %}.pc_{%s p.Type().BaseName() %}) // for Last byApi
 			}
+			BaseRelease(cefp) // for byApi
 			*{%s goParamName(p) %} = ({%s p.Type().Deref().GoCType() %})({%= goTempNameOut(p) %}.pc_{%s p.Type().BaseName() %})
 		}
 	{%- else -%}
