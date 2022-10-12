@@ -70,6 +70,7 @@ Statemens to convert from C.param to Go type.
 Set returned Go value to C.param and cleanup
 {% func postProcess(p parser.Param, lt *LogTag) -%}
 {% if p.IsOutParam() -%}
+	// IsOutParam
 	{%- if p.Type().Ty == parser.TyStringT -%}
 		set_cef_string({%= goParamName(p) %}, {%= goTempNameOut(p) %})
 	{%- elseif p.Type().Deref().IsRefCountedClass() -%}
@@ -108,7 +109,7 @@ Set returned Go value to C.param and cleanup
 		if cefp != {%= goTempNameOut(p) %}.pc_{%s p.Type().BaseName() %} {
 			if {%= goTempNameOut(p) %}.beUnrefed != byCef {
 				BaseAddRef({%= goTempNameOut(p) %}.pc_{%s p.Type().BaseName() %}) // InOut Param
-				BaseAddRef({%= goTempNameOut(p) %}.pc_{%s p.Type().BaseName() %}) // for Last byApi
+				// BaseAddRef({%= goTempNameOut(p) %}.pc_{%s p.Type().BaseName() %}) // for Last byApi
 			}
 			BaseRelease(cefp) // for byApi
 			*{%s goParamName(p) %} = ({%s p.Type().Deref().GoCType() %})({%= goTempNameOut(p) %}.pc_{%s p.Type().BaseName() %})
@@ -196,7 +197,7 @@ func cefingo_{%s baseName %}_{%s m.Funcname.Name() %}(
 		{%- if p.Name() != "self" && p.IsRefCountedClass() -%}
 			BaseRelease(({%s p.CgoType() %})({%s goParamName(p) %})) // byApi
 		{%- elseif p.IsInOutParam() && p.Type().Deref().IsRefCountedClass() -%}
-			BaseRelease(({%s p.Type().Deref().CgoType() %})(*{%s goParamName(p) %})) // byApi
+			// BaseRelease(({%s p.Type().Deref().CgoType() %})(*{%s goParamName(p) %})) // byApi
 		{%- endif -%}
 	{%- endfor %}
 	{% if retCtype !="" %}return cRet{% endif %}
@@ -394,6 +395,7 @@ extern {%s constructorName(st) %};
 
 {% func preConvToC(p parser.Param, lt *LogTag) -%}
 {% if p.IsOutParam() -%}
+	// IsOutParam
 	{%- if ok, argLen := p.IsByteSliceParam(); ok -%}
 	{%s argLen %} := len({%s goParamName(p) %})
 	{%s cTempName(p) %} := c_calloc(C.size_t({%s argLen %}), 1, "{%s lt.NextTag() %}:{%s p.CalleeName() + "::" + p.Name() %}")
@@ -458,6 +460,7 @@ tmp{%= cName(p) -%}
 
 {% func convToC(p parser.Param, lt *LogTag) -%}
 {% if p.IsOutParam() -%}
+	// IsOutParam
 	{%- if ok, _ := p.IsByteSliceParam(); ok -%}
 	{%-= cTempName(p) -%}
 	{%- elseif p.Type().Ty == parser.TyStringT -%}
@@ -496,6 +499,7 @@ tmp{%= cName(p) -%}
 
 {% func postConvFromC(p parser.Param, lt *LogTag) -%}
 {% if p.IsOutParam() -%}
+	// IsOutParam
 	{%- if isSlice, argLen := p.IsByteSliceParam(); isSlice -%}
 	{%s goParamName(p) %} = C.GoBytes({%s cTempName(p) %}, C.int({%s argLen %}))
 	C.free({%s cTempName(p) %})
