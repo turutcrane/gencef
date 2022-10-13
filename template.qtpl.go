@@ -2497,31 +2497,30 @@ func cTempName(p parser.Param) string {
 func streamconvToC(qw422016 *qt422016.Writer, p parser.Param, lt *LogTag) {
 //line template.qtpl:462
 	if p.IsOutParam() {
-//line template.qtpl:462
-		qw422016.N().S(`	// IsOutParam
-`)
-//line template.qtpl:464
+//line template.qtpl:463
 		if ok, _ := p.IsByteSliceParam(); ok {
+//line template.qtpl:464
+			streamcTempName(qw422016, p)
 //line template.qtpl:465
+		} else if p.Type().Ty == parser.TyStringT {
+//line template.qtpl:466
 			streamcTempName(qw422016, p)
 //line template.qtpl:466
-		} else if p.Type().Ty == parser.TyStringT {
-//line template.qtpl:467
-			streamcTempName(qw422016, p)
-//line template.qtpl:467
 			qw422016.N().S(`.`)
-//line template.qtpl:467
+//line template.qtpl:466
 			qw422016.E().S("p_cef_string_t")
-//line template.qtpl:468
+//line template.qtpl:467
 		} else if ok, _ := p.IsSliceParam(); ok {
-//line template.qtpl:469
+//line template.qtpl:468
 			qw422016.N().S("(*" + p.Type().Deref().GoCType() + ")(" + cTempName(p) + ")")
-//line template.qtpl:470
+//line template.qtpl:469
 		} else {
-//line template.qtpl:471
+//line template.qtpl:470
 			qw422016.N().S("&" + cTempName(p))
-//line template.qtpl:472
+//line template.qtpl:471
 		}
+//line template.qtpl:472
+		qw422016.E().S("/* IsOutParam */")
 //line template.qtpl:473
 	} else if p.IsRefCountedClass() {
 //line template.qtpl:474

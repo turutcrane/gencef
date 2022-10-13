@@ -460,7 +460,6 @@ tmp{%= cName(p) -%}
 
 {% func convToC(p parser.Param, lt *LogTag) -%}
 {% if p.IsOutParam() -%}
-	// IsOutParam
 	{%- if ok, _ := p.IsByteSliceParam(); ok -%}
 	{%-= cTempName(p) -%}
 	{%- elseif p.Type().Ty == parser.TyStringT -%}
@@ -470,6 +469,7 @@ tmp{%= cName(p) -%}
 	{%- else -%}
 	{%-s= "&" + cTempName(p) -%}
 	{%- endif -%}
+	{%-s "/* IsOutParam */" -%}
 {% elseif p.IsRefCountedClass() -%}
 	{%- if p.Name() == "self" -%}({%s p.GoCType() %})(self.pc_{%s p.Type().BaseName() -%}{%s ")" -%}
 	{%- else %}{%s goTempName(p) %}{% endif -%}
