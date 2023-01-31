@@ -4,6 +4,9 @@
 package main
 
 import (
+	"fmt"
+	"go/build"
+	"os"
 	"path/filepath"
 
 	"github.com/magefile/mage/mg" // mg contains helpful utility functions, like Deps
@@ -56,15 +59,17 @@ func ParseStringerGo() error {
 }
 
 // vet: template.qtpl.go *.go parser/parse_string.go
-// 	@# adjust path produced in error meesage
-// 	go vet .
+//
+//	@# adjust path produced in error meesage
+//	go vet .
 func Vet() error {
 	mg.Deps(TemplateQtplGo, ParseStringerGo)
 	return sh.RunV("go", "vet", ".")
 }
 
 // capi:
-// 	go run . -pkgdir ../cefingo
+//
+//	go run . -pkgdir ../cefingo
 func Capi() error {
 	return sh.RunV("go", "run", ".", "-pkgdir", "../cefingo")
 }
@@ -85,4 +90,59 @@ func Fmt() error {
 	} else {
 		return err
 	}
+}
+
+//go:generate go run github.com/valyala/quicktemplate/qtc@latest -file=pkgconfig.qtpl
+//go:generate sed -i -e "3i //go:build mage" *.qtpl.go
+
+func genPkgConfig(out *os.File, cefBinaryPath string) error {
+	var binDir string
+	var err error
+	if binDir, err = filepath.Abs(cefBinaryPath); err != nil {
+		return err
+	}
+	// fmt.Println("T51:", binDir)
+	WriteGenPkgConfig(out, filepath.ToSlash(binDir))
+	return nil
+}
+
+func Pkgconfig(cefBinaryPath string) error {
+	return genPkgConfig(os.Stdout, cefBinaryPath)
+}
+
+func CheckPkgConfig() error {
+	return sh.RunV("pkgconf", "cefingo", "--variable=includedir")
+}
+
+func InstallPkgConfig(cefBinaryPath string) error {
+	configPath := filepath.SplitList(os.Getenv("PKG_CONFIG_PATH"))
+	if len(configPath) == 0 {
+		return fmt.Errorf("PKG_CONFIG_PATH no defined")
+	}
+	configName := filepath.Join(configPath[0], "cefingo.pc")
+	out, err := os.Create(configName)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	return genPkgConfig(out, cefBinaryPath)
+}
+
+func InstallCefLibrary(cefBinaryPath string) error {
+	if err := InstallPkgConfig(cefBinaryPath); err != nil {
+		return err
+	}
+
+	if binDir, err := filepath.Abs(cefBinaryPath); err == nil {
+		targetDir := filepath.SplitList(build.Default.GOPATH)[0]
+		if err := sh.RunV("cp", "-r", filepath.ToSlash(filepath.Join(binDir, "Release", "*")), filepath.ToSlash(filepath.Join(targetDir, "bin"))); err != nil {
+			return err
+		}
+		if err := sh.RunV("cp", "-r", filepath.ToSlash(filepath.Join(binDir, "Resources", "*")), filepath.ToSlash(filepath.Join(targetDir, "bin"))); err != nil {
+			return err
+		}
+	} else {
+		return err
+	}
+	return nil
 }
