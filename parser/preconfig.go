@@ -53,6 +53,8 @@ var builtinBase = `
 #define __builtin_fabsf(x) (0)
 #define __builtin_fabsl(x) (0)
 #define __builtin_fabs(x) (0)
+// #define __builtin_unreachable(x) (0)
+#define __has_builtin(x) (1)
 
 #define __INTRINSIC_PROLOG(name)
 `
