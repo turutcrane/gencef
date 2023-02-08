@@ -49,10 +49,11 @@ Statemens to convert from C.param to Go type.
 {% elseif !p.IsOutParam() -%}
 		// !p.IsOutParam
 	{%- if bs, maxLenArg := p.IsByteSliceParam(); bs -%}
-		{%= goTempName(p) %} := (*[1 << 30]byte)({%s p.Name() %})[:{%s maxLenArg %}:{%s maxLenArg %}]
+		{%= goTempName(p) %} := unsafe.Slice((*byte)({%s p.Name() %}),{%s maxLenArg %})
 	{%- elseif s, maxLenArg := p.IsSliceParam(); s -%}
 		// p.IsSliceParam
-		slice := (*[1 << 30]({%s p.Type().Deref().GoCType() %}))(unsafe.Pointer({%s p.Name() %}))[:{%s maxLenArg %}:{%s maxLenArg %}]
+		// slice := (*[1 << 30]({%s p.Type().Deref().GoCType() %}))(unsafe.Pointer({%s p.Name() %}))[:{%s maxLenArg %}:{%s maxLenArg %}]
+		slice := unsafe.Slice({%s p.Name() %}, {%s maxLenArg %})
 		{%= goTempName(p) %} := make({%s p.GoType() %}, {%s maxLenArg %})
 		for i, v := range slice {
 			{%= goTempName(p) %}[i] = {%s ConvToGoTypeExp(p.Type().Deref(), "v", "byApi") %}
@@ -83,7 +84,8 @@ Set returned Go value to C.param and cleanup
 	{%- elseif isSlice, sliceLen := p.IsByteSliceParam(); isSlice -%}
 		*{%s sliceLen %} = C.size_t(len({%s goTempNameOut(p) %}))
 		*{%s goParamName(p) %} = ({%s p.Type().Deref().GoCType() %})(c_calloc(*{%s sliceLen %}, 1, "{%s lt.NextTag() %}:{%s p.CalleeName() + "::" + p.Name() %}"))
-		target := (*[1<<30]byte)(unsafe.Pointer(*{%s goParamName(p) %}))[:*{%s sliceLen %}:*{%s sliceLen %}]
+		// target := (*[1<<30]byte)(unsafe.Pointer(*{%s goParamName(p) %}))[:*{%s sliceLen %}:*{%s sliceLen %}]
+		target := unsafe.Slice((*byte)(*{%s goParamName(p) %}),*{%s sliceLen %})
 		copy(target, {%s goTempNameOut(p) %})
 	{%- elseif isSlice, _ := p.IsSliceParam(); isSlice -%}
 		{% code log.Panicf("T76: Not implemented %v", p) %}
@@ -419,7 +421,8 @@ extern {%s constructorName(st) %};
 {% elseif ok, argLen := p.IsSliceParam(); ok -%}
 	{%s argLen %} := len({%s goParamName(p) %})
 	{%s cTempName(p) %} := c_calloc(C.size_t({%s argLen %}), (C.size_t)(unsafe.Sizeof({%= goParamName(p) %}[0])), "{%s lt.NextTag() %}:{%s p.CalleeName() + "::" + p.Name() %}")
-	slice := (*[1 << 30]{%s p.Type().Deref().GoCType() %})({%s cTempName(p) %})[:{%s argLen %}:{%s argLen %}]
+	// X slice := (*[1 << 30]{%s p.Type().Deref().GoCType() %})({%s cTempName(p) %})[:{%s argLen %}:{%s argLen %}]
+	slice := unsafe.Slice(({%s p.Type().GoCType() %})({%s cTempName(p) %}), {%s argLen %})
 	for i, v := range {%s goParamName(p) %} {
 		cefp := v.pc_{%s p.Type().BaseName() %}
 		if cefp != nil {
@@ -505,7 +508,8 @@ tmp{%= cName(p) -%}
 	C.free({%s cTempName(p) %})
 	{%- elseif isSlice, argLen := p.IsSliceParam(); isSlice -%}
 	{%s goParamName(p) %} = make([]{%s p.Type().Deref().GoType() %}, *{%s argLen %})
-	_{%s cTempName(p) %} := (*[1 << 30]({%s p.Type().Deref().GoCType() %}))(unsafe.Pointer({%s cTempName(p) %}))[:*{%s argLen %}:*{%s argLen %}]
+	// _{%s cTempName(p) %} := (*[1 << 30]({%s p.Type().Deref().GoCType() %}))(unsafe.Pointer({%s cTempName(p) %}))[:*{%s argLen %}:*{%s argLen %}]
+	_{%s cTempName(p) %} := unsafe.Slice(({%s p.Type().GoCType() %})({%s cTempName(p) %}), *{%s argLen %})
 	for i := C.size_t(0); i {%s= "<" %} *{%s argLen %}; i++ {
 		{%s goParamName(p) %}[i] = new{%s p.Type().Deref().Deref().GoType() %}(_{%s cTempName(p) %}[i], byApp) // Out Slice Param
 	}

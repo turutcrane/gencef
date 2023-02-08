@@ -40,7 +40,7 @@ func TemplateQtplGo() error {
 	if updated, err := target.Path("template.qtpl.go", "template.qtpl"); err != nil {
 		return err
 	} else if updated {
-		return sh.RunV("go", "generate", "*.go")
+		return sh.RunV("go", "generate", "-v", ".")
 	}
 	return nil
 }
