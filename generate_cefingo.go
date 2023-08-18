@@ -14,8 +14,8 @@ import (
 	"go/format"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"path"
+	"text/template"
 
 	"os"
 	"path/filepath"
@@ -23,6 +23,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/magefile/mage/sh"
 	"github.com/turutcrane/gencefingo/internal/log"
 	"github.com/turutcrane/gencefingo/parser"
 )
@@ -30,8 +31,7 @@ import (
 var (
 	goFormat     bool = true
 	fileComments map[int][]string
-	// capiDir      = flag.String("capidir", "capi", "outpu directory")
-	pkgDir  = flag.String("pkgdir", ".", "output directory")
+	pkgDir       = flag.String("pkgdir", ".", "output directory")
 	// pkgName = flag.String("pkg", "github.com/turutcrane/cefingo", "package name")
 	traceOn = flag.Bool("trace", false, "trace flag")
 	logTags LogTag
@@ -49,7 +49,6 @@ func main() {
 	copyPkgDir("v8api")
 	copyPkgDir("message_router")
 	logTagFile := logTags.ReadTags(*pkgDir)
-
 	defer logTags.WriteToFile(logTagFile)
 	// log.Println("T37:", logTags)
 
@@ -132,6 +131,7 @@ func main() {
 		// }
 	}
 
+	genReadme()
 	log.Tracef("T10: End: %d Translation Units", len(tus))
 }
 
@@ -180,9 +180,9 @@ func outFileGo(gf *Generator) {
 	}
 
 	// Write to file.
-	outputName := filepath.Join(*pkgDir+"/capi", gf.fname)
+	outputName := filepath.Join(*pkgDir, "capi", gf.fname)
 
-	err := ioutil.WriteFile(outputName, src, 0644)
+	err := writeFile(outputName, src)
 	if err != nil {
 		log.Panicf("writing output: %s", err)
 	}
@@ -206,16 +206,16 @@ func newFileCH() (cFile, hFile *Generator) {
 func outFileCH(cFile, hFile *Generator) {
 
 	// Write to C file.
-	outputCName := filepath.Join(*pkgDir+"/capi", "cefingo_gen.c")
-	err := ioutil.WriteFile(outputCName, cFile.buf.Bytes(), 0644)
+	outputCName := filepath.Join(*pkgDir, "capi", "cefingo_gen.c")
+	err := writeFile(outputCName, cFile.buf.Bytes())
 	if err != nil {
 		log.Panicf("writing output: %s", err)
 	}
 
 	// Write to H file.
 	hFile.Printf("#endif //CEFINGO_GEN_H_")
-	outputHName := filepath.Join(*pkgDir+"/capi", "cefingo_gen.h")
-	err = ioutil.WriteFile(outputHName, hFile.buf.Bytes(), 0644)
+	outputHName := filepath.Join(*pkgDir, "capi", "cefingo_gen.h")
+	err = writeFile(outputHName, hFile.buf.Bytes())
 	if err != nil {
 		log.Panicf("writing output: %s", err)
 	}
@@ -498,7 +498,7 @@ func (lt *LogTag) WriteToFile(fname string) {
 	if err != nil {
 		log.Panicln("T475:", err)
 	}
-	err = ioutil.WriteFile(fname, b, 0644)
+	err = writeFile(fname, b)
 	if err != nil {
 		log.Panicln("T475:", err)
 	}
@@ -524,7 +524,7 @@ func copyPkgDir(dirname string) {
 	// } else {
 	// 	log.Panicln("T520:", err)
 	// }
-	if err := fs.WalkDir(embd, path.Join("embed", dirname), func (path string, d fs.DirEntry, err error) error {
+	if err := fs.WalkDir(embd, path.Join("embed", dirname), func(path string, d fs.DirEntry, err error) error {
 		if d.IsDir() {
 			dirPath := strings.TrimPrefix(path, "embed/")
 			createPkgDir(dirPath)
@@ -541,10 +541,48 @@ func copyPkgFile(path string) {
 	if b, err := fs.ReadFile(embd, path); err == nil {
 		fname := filepath.Join(*pkgDir, strings.TrimPrefix(path, "embed/"))
 		if err := os.WriteFile(fname, b, fs.ModePerm); err != nil {
-			log.Panicln("T541:", fname, err,)
+			log.Panicln("T541:", fname, err)
 		}
 
 	} else {
 		log.Panicln("T541:", err)
+	}
+}
+
+// get includedir from pkg-config
+func getIncludeDir() (includedir string) {
+	var err error
+	if includedir, err = sh.Output("pkg-config", "cefingo", "--variable=includedir"); err != nil {
+		log.Panicln("T551:", err)
+	}
+	return includedir
+}
+
+// write file with permission 0644
+func writeFile(fname string, b []byte) error {
+	return os.WriteFile(fname, b, 0644)
+}
+
+// generate README.md
+func genReadme() {
+	includeDir := getIncludeDir()
+	if r, err := fs.ReadFile(embd, "embed/README.md.tmpl"); err == nil {
+		t := template.Must(template.New("readme").Parse(string(r)))
+		outputName := filepath.Join(*pkgDir, "README.md")
+		if wr, err := os.OpenFile(outputName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644); err == nil {
+			defer wr.Close()
+			para := struct {
+				LibName string
+			} {
+				LibName: filepath.Base(includeDir),
+			}
+			if err := t.Execute(wr, para); err != nil {
+				log.Panicln("T92:", err)
+			}
+		} else {
+			log.Panicln("T186: ", outputName, err)
+		}
+	} else {
+		log.Panicln("T583:", err)
 	}
 }

@@ -21,14 +21,15 @@ type void struct{}
 var setElement void
 
 var targetFileList = map[string]void{
-	"cef_string_list.h":     setElement,
-	"cef_string_map.h":      setElement,
-	"cef_string_multimap.h": setElement,
-	"cef_time.h":            setElement,
-	"cef_types.h":           setElement,
-	"cef_types_win.h":       setElement,
-	"cef_thread_internal.h": setElement,
-	"cef_types_geometry.h":  setElement,
+	"cef_string_list.h":            setElement,
+	"cef_string_map.h":             setElement,
+	"cef_string_multimap.h":        setElement,
+	"cef_time.h":                   setElement,
+	"cef_types.h":                  setElement,
+	"cef_types_win.h":              setElement,
+	"cef_thread_internal.h":        setElement,
+	"cef_types_geometry.h":         setElement,
+	"cef_types_content_settings.h": setElement,
 }
 
 var handlerClasses = map[string]void{
@@ -410,14 +411,19 @@ const (
 var primitiveTypeDef = map[string]Ty{
 	"size_t":    TySizeT,
 	"HWND":      TyHWND,
-	"int32":     TyInt32,
-	"int64":     TyInt64,
-	"uint32":    TyUint32,
-	"uint64":    TyUint64,
+	// "int32":     TyInt32,
+	"int32_t":   TyInt32,
+	// "int64":     TyInt64,
+	"int64_t":   TyInt64,
+	// "uint32":    TyUint32,
+	"uint32_t":  TyUint32,
+	// "uint64":    TyUint64,
+	"uint64_t":  TyUint64,
 	"time_t":    TyTimeT,
-	"int16":     TyInt16,
-	"uint16":    TyUint16,
-	"char16":    TyUint16,
+	// "int16":     TyInt16,
+	// "uint16":    TyUint16,
+	// "char16":    TyUint16,
+	"char16_t":  TyUint16,
 	"HINSTANCE": TyHINSTANCE,
 	"DWORD":     TyDWORD,
 	"HMENU":     TyHMENU,
@@ -1865,15 +1871,15 @@ func (t Type) CType() (ret string) {
 	case TyInt:
 		ret = "int"
 	case TyInt32:
-		ret = "int32"
+		ret = "int32_t"
 	case TyInt64:
-		ret = "int64"
+		ret = "int64_t"
 	case TyUint16:
 		ret = "uint16"
 	case TyUint32:
-		ret = "uint32"
+		ret = "uint32_t"
 	case TyUint64:
-		ret = "uint64"
+		ret = "uint64_t"
 	case TySizeT:
 		ret = "size_t"
 	case TyStringT:

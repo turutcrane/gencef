@@ -26,3 +26,7 @@ func Panicln(v ...interface{}) {
 func Fatalln(v ...interface{}) {
 	golog.Fatalln(v...)
 }
+
+func Println(v ...interface{}) {
+	golog.Println(v...)
+}

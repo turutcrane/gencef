@@ -35,6 +35,8 @@ var model64 = &cc.Model{
 // builtins not supported by modernc.org/cc
 var builtinBase = `
 #define __builtin_va_list void *
+#define __builtin_va_start(x, y)
+#define __builtin_va_end(x)
 #define __asm(x)
 #define __inline
 #define __inline__
